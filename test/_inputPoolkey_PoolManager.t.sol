@@ -74,11 +74,13 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     PoolKey inputkey;
     address hookAddr;
+    Hooks.Permissions flag;
+    event permission(Hooks.Permissions);
     function setUp() public {
         // string memory code_json = vm.readFile("test/_json_GasPriceFeesHook.json");
         // string memory code_json = vm.readFile("test/_json_PointsHook.json");
-        string memory code_json = vm.readFile("test/_json_TakeProfitsHook.json");
-        // string memory code_json = vm.readFile("test/_json_another.json");
+        // string memory code_json = vm.readFile("test/_json_TakeProfitsHook.json");
+        string memory code_json = vm.readFile("test/_json_another.json");
 
         address _currency0 = vm.parseJsonAddress(code_json, ".data.currency0");
         address _currency1 = vm.parseJsonAddress(code_json, ".data.currency1");
@@ -91,6 +93,10 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         inputkey.fee = (_fee < 100) ? 100 : _fee;
         inputkey.tickSpacing = _tickSpacing;
         inputkey.hooks = IHooks(_hooks);
+
+        (bool success, bytes memory returnData) = address(inputkey.hooks).call(abi.encodeWithSignature("getHookPermissions()"));
+        flag = abi.decode(returnData, (Hooks.Permissions));
+        emit permission(flag);
 
         deal(address(Currency.unwrap(inputkey.currency0)), address(this), type(uint256).max);
         deal(address(Currency.unwrap(inputkey.currency1)), address(this), type(uint256).max);
@@ -115,7 +121,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     function test_initialize_succeedsWithHooks(uint160 sqrtPriceX96) public {
         if (
-            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_INITIALIZE_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_INITIALIZE_FLAG) &&
             !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_INITIALIZE_FLAG)
         ) {
             emit log_string("Skip Test");
@@ -135,7 +141,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     function test_addLiquidity_succeedsWithHooksIfInitialized(uint160 sqrtPriceX96) public {
         if (
-            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_ADD_LIQUIDITY_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_ADD_LIQUIDITY_FLAG) &&
             !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_ADD_LIQUIDITY_FLAG)
         ) {
             emit log_string("Skip Test");
@@ -176,7 +182,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     function test_removeLiquidity_succeedsWithHooksIfInitialized(uint160 sqrtPriceX96) public {
         if (
-            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG) &&
             !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_REMOVE_LIQUIDITY_FLAG)
         ) {
             emit log_string("Skip Test");
@@ -219,7 +225,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     function test_addLiquidity_failsWithIncorrectSelectors() public {
         if (
-            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_ADD_LIQUIDITY_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_ADD_LIQUIDITY_FLAG) &&
             !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_ADD_LIQUIDITY_FLAG)
         ) {
             emit log_string("Skip Test");
@@ -250,7 +256,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     function test_removeLiquidity_failsWithIncorrectSelectors() public {
         if (
-            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG) &&
             !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_REMOVE_LIQUIDITY_FLAG)
         ) {
             emit log_string("Skip Test");
@@ -282,7 +288,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     function test_addLiquidity_succeedsWithCorrectSelectors() public {
         if (
-            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_ADD_LIQUIDITY_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_ADD_LIQUIDITY_FLAG) &&
             !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_ADD_LIQUIDITY_FLAG)
         ) {
             emit log_string("Skip Test");
@@ -313,7 +319,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     function test_removeLiquidity_succeedsWithCorrectSelectors() public {
         if (
-            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG) &&
             !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_REMOVE_LIQUIDITY_FLAG)
         ) {
             emit log_string("Skip Test");
@@ -345,7 +351,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     function test_addLiquidity_withHooks_gas() public {
         if (
-            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_ADD_LIQUIDITY_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_ADD_LIQUIDITY_FLAG) &&
             !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_ADD_LIQUIDITY_FLAG)
         ) {
             emit log_string("Skip Test");
@@ -364,7 +370,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     function test_removeLiquidity_withHooks_gas() public {
         if (
-            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG) &&
             !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_REMOVE_LIQUIDITY_FLAG)
         ) {
             emit log_string("Skip Test");
@@ -384,7 +390,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     function test_swap_succeedsWithHooksIfInitialized() public {
         if (
-            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_SWAP_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_SWAP_FLAG) &&
             !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_SWAP_FLAG)
         ) {
             emit log_string("Skip Test");
@@ -421,7 +427,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     function test_swap_failsWithIncorrectSelectors() public {
         if (
-            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_SWAP_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_SWAP_FLAG) &&
             !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_SWAP_FLAG)
         ) {
             emit log_string("Skip Test");
@@ -458,7 +464,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     function test_swap_succeedsWithCorrectSelectors() public {
         if (
-            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_SWAP_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_SWAP_FLAG) &&
             !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_SWAP_FLAG)
         ) {
             emit log_string("Skip Test");
@@ -488,7 +494,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     function test_swap_withHooks_gas() public {
         if (
-            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_SWAP_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_SWAP_FLAG) &&
             !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_SWAP_FLAG)
         ) {
             emit log_string("Skip Test");
@@ -516,7 +522,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     function test_donate_failsWithIncorrectSelectors() public {
         if (
-            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_DONATE_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_DONATE_FLAG) &&
             !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_DONATE_FLAG)
         ) {
             emit log_string("Skip Test");
@@ -547,7 +553,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     function test_donate_succeedsWithCorrectSelectors() public {
         if (
-            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_DONATE_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_DONATE_FLAG) &&
             !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_DONATE_FLAG)
         ) {
             emit log_string("Skip Test");
