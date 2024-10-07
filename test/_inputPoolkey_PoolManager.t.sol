@@ -72,13 +72,13 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
     uint24 constant MAX_PROTOCOL_FEE_BOTH_TOKENS = (1000 << 12) | 1000; // 1000 1000
 
-    Hooks.Permissions flag;
     PoolKey inputkey;
     address hookAddr;
     function setUp() public {
         // string memory code_json = vm.readFile("test/_json_GasPriceFeesHook.json");
         // string memory code_json = vm.readFile("test/_json_PointsHook.json");
         string memory code_json = vm.readFile("test/_json_TakeProfitsHook.json");
+        // string memory code_json = vm.readFile("test/_json_another.json");
 
         address _currency0 = vm.parseJsonAddress(code_json, ".data.currency0");
         address _currency1 = vm.parseJsonAddress(code_json, ".data.currency1");
@@ -95,12 +95,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         deal(address(Currency.unwrap(inputkey.currency0)), address(this), type(uint256).max);
         deal(address(Currency.unwrap(inputkey.currency1)), address(this), type(uint256).max);
 
-        (bool success, bytes memory returnData) = address(inputkey.hooks).call(abi.encodeWithSignature("getHookPermissions()"));
-        flag = abi.decode(returnData, (Hooks.Permissions));
-
         hookAddr = address(inputkey.hooks);
-
-        // initializeManagerRoutersAndPoolsWithLiq(IHooks(address(0)));      
         
         // eth-sepolia
         // manager = IPoolManager(0xe8e23e97fa135823143d6b9cba9c699040d51f70);
@@ -117,8 +112,12 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         MockERC20(Currency.unwrap(inputkey.currency0)).approve(address(modifyLiquidityRouter), Constants.MAX_UINT256);
         MockERC20(Currency.unwrap(inputkey.currency1)).approve(address(modifyLiquidityRouter), Constants.MAX_UINT256);
     }
+
     function test_initialize_succeedsWithHooks(uint160 sqrtPriceX96) public {
-        if (!flag.beforeInitialize && !flag.afterInitialize) {
+        if (
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_INITIALIZE_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_INITIALIZE_FLAG)
+        ) {
             emit log_string("Skip Test");
             return;
         }
@@ -135,7 +134,10 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     }
 
     function test_addLiquidity_succeedsWithHooksIfInitialized(uint160 sqrtPriceX96) public {
-        if (!flag.beforeAddLiquidity && !flag.afterAddLiquidity) {
+        if (
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_ADD_LIQUIDITY_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_ADD_LIQUIDITY_FLAG)
+        ) {
             emit log_string("Skip Test");
             return;
         }
@@ -151,13 +153,13 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         (key,) = initPool(inputkey.currency0, inputkey.currency1, IHooks(mockAddr), inputkey.fee, sqrtPriceX96, ZERO_BYTES);
         BalanceDelta balanceDelta = modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
         
-        if (flag.beforeAddLiquidity) {
+        if (Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_ADD_LIQUIDITY_FLAG)) {
             bytes32 beforeSelector = MockHooks.beforeAddLiquidity.selector;
             bytes memory beforeParams = abi.encode(address(modifyLiquidityRouter), key, LIQUIDITY_PARAMS, ZERO_BYTES);
             assertEq(MockContract(mockAddr).timesCalledSelector(beforeSelector), 1);
             assertTrue(MockContract(mockAddr).calledWithSelector(beforeSelector, beforeParams));
         }
-        if (flag.afterAddLiquidity) {
+        if (Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_ADD_LIQUIDITY_FLAG)) {
             bytes32 afterSelector = MockHooks.afterAddLiquidity.selector;
             bytes memory afterParams = abi.encode(
                 address(modifyLiquidityRouter),
@@ -173,7 +175,10 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     }
 
     function test_removeLiquidity_succeedsWithHooksIfInitialized(uint160 sqrtPriceX96) public {
-        if (!flag.beforeRemoveLiquidity && !flag.afterRemoveLiquidity) {
+        if (
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_REMOVE_LIQUIDITY_FLAG)
+        ) {
             emit log_string("Skip Test");
             return;
         }
@@ -191,13 +196,13 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
         BalanceDelta balanceDelta = modifyLiquidityRouter.modifyLiquidity(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
 
-        if (flag.beforeRemoveLiquidity) {
+        if (Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG)) {
             bytes32 beforeSelector = MockHooks.beforeRemoveLiquidity.selector;
             bytes memory beforeParams = abi.encode(address(modifyLiquidityRouter), key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
             assertEq(MockContract(mockAddr).timesCalledSelector(beforeSelector), 1);
             assertTrue(MockContract(mockAddr).calledWithSelector(beforeSelector, beforeParams));
         }
-        if (flag.afterRemoveLiquidity) {
+        if (Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_REMOVE_LIQUIDITY_FLAG)) {
             bytes32 afterSelector = MockHooks.afterRemoveLiquidity.selector;
             bytes memory afterParams = abi.encode(
                 address(modifyLiquidityRouter),
@@ -213,7 +218,10 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     }
 
     function test_addLiquidity_failsWithIncorrectSelectors() public {
-        if (!flag.beforeAddLiquidity && !flag.afterAddLiquidity) {
+        if (
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_ADD_LIQUIDITY_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_ADD_LIQUIDITY_FLAG)
+        ) {
             emit log_string("Skip Test");
             return;
         }
@@ -227,12 +235,12 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         mockHooks.setReturnValue(mockHooks.beforeAddLiquidity.selector, bytes4(0xdeadbeef));
         mockHooks.setReturnValue(mockHooks.afterAddLiquidity.selector, bytes4(0xdeadbeef));
 
-        if (flag.beforeAddLiquidity) {
+        if (Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_ADD_LIQUIDITY_FLAG)) {
             // Fails at beforeAddLiquidity hook.
             vm.expectRevert(Hooks.InvalidHookResponse.selector);
             modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
         }
-        if (flag.afterAddLiquidity) {
+        if (Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_ADD_LIQUIDITY_FLAG)) {
             // Fail at afterAddLiquidity hook.
             mockHooks.setReturnValue(mockHooks.beforeAddLiquidity.selector, mockHooks.beforeAddLiquidity.selector);
             vm.expectRevert(Hooks.InvalidHookResponse.selector);
@@ -241,7 +249,10 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     }
 
     function test_removeLiquidity_failsWithIncorrectSelectors() public {
-        if (!flag.beforeRemoveLiquidity && !flag.afterRemoveLiquidity) {
+        if (
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_REMOVE_LIQUIDITY_FLAG)
+        ) {
             emit log_string("Skip Test");
             return;
         }
@@ -256,12 +267,12 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         mockHooks.setReturnValue(mockHooks.beforeRemoveLiquidity.selector, bytes4(0xdeadbeef));
         mockHooks.setReturnValue(mockHooks.afterRemoveLiquidity.selector, bytes4(0xdeadbeef));
 
-        if (flag.beforeRemoveLiquidity) {
+        if (Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG)) {
             // Fails at beforeRemoveLiquidity hook.
             vm.expectRevert(Hooks.InvalidHookResponse.selector);
             modifyLiquidityRouter.modifyLiquidity(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
         }
-        if (flag.afterRemoveLiquidity) {
+        if (Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_REMOVE_LIQUIDITY_FLAG)) {
             // Fail at afterRemoveLiquidity hook.
             mockHooks.setReturnValue(mockHooks.beforeRemoveLiquidity.selector, mockHooks.beforeRemoveLiquidity.selector);
             vm.expectRevert(Hooks.InvalidHookResponse.selector);
@@ -270,7 +281,10 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     }
 
     function test_addLiquidity_succeedsWithCorrectSelectors() public {
-        if (!flag.beforeAddLiquidity && !flag.afterAddLiquidity) {
+        if (
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_ADD_LIQUIDITY_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_ADD_LIQUIDITY_FLAG)
+        ) {
             emit log_string("Skip Test");
             return;
         }
@@ -298,7 +312,10 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     }
 
     function test_removeLiquidity_succeedsWithCorrectSelectors() public {
-        if (!flag.beforeRemoveLiquidity && !flag.afterRemoveLiquidity) {
+        if (
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_REMOVE_LIQUIDITY_FLAG)
+        ) {
             emit log_string("Skip Test");
             return;
         }
@@ -327,7 +344,10 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     }
 
     function test_addLiquidity_withHooks_gas() public {
-        if (!flag.beforeAddLiquidity && !flag.afterAddLiquidity) {
+        if (
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_ADD_LIQUIDITY_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_ADD_LIQUIDITY_FLAG)
+        ) {
             emit log_string("Skip Test");
             return;
         }
@@ -343,7 +363,10 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     }
 
     function test_removeLiquidity_withHooks_gas() public {
-        if (!flag.beforeRemoveLiquidity && !flag.afterRemoveLiquidity) {
+        if (
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_REMOVE_LIQUIDITY_FLAG)
+        ) {
             emit log_string("Skip Test");
             return;
         }
@@ -360,7 +383,10 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     }
 
     function test_swap_succeedsWithHooksIfInitialized() public {
-        if (!flag.beforeSwap && !flag.afterSwap) {
+        if (
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_SWAP_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_SWAP_FLAG)
+        ) {
             emit log_string("Skip Test");
             return;
         }
@@ -379,13 +405,13 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
         BalanceDelta balanceDelta = swapRouter.swap(key, SWAP_PARAMS, testSettings, ZERO_BYTES);
 
-        if (flag.beforeSwap) {
+        if (Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_SWAP_FLAG)) {
             bytes32 beforeSelector = MockHooks.beforeSwap.selector;
             bytes memory beforeParams = abi.encode(address(swapRouter), key, SWAP_PARAMS, ZERO_BYTES);
             assertEq(MockContract(mockAddr).timesCalledSelector(beforeSelector), 1);
             assertTrue(MockContract(mockAddr).calledWithSelector(beforeSelector, beforeParams));
         }
-        if (flag.afterSwap) {
+        if (Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_SWAP_FLAG)) {
             bytes32 afterSelector = MockHooks.afterSwap.selector;
             bytes memory afterParams = abi.encode(address(swapRouter), key, SWAP_PARAMS, balanceDelta, ZERO_BYTES);
             assertEq(MockContract(mockAddr).timesCalledSelector(afterSelector), 1);
@@ -394,7 +420,10 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     }
 
     function test_swap_failsWithIncorrectSelectors() public {
-        if (!flag.beforeSwap && !flag.afterSwap) {
+        if (
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_SWAP_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_SWAP_FLAG)
+        ) {
             emit log_string("Skip Test");
             return;
         }
@@ -414,12 +443,12 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         mockHooks.setReturnValue(mockHooks.beforeSwap.selector, bytes4(0xdeadbeef));
         mockHooks.setReturnValue(mockHooks.afterSwap.selector, bytes4(0xdeadbeef));
 
-        if (flag.beforeSwap) {
+        if (Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_SWAP_FLAG)) {
             // Fails at beforeSwap hook.
             vm.expectRevert(Hooks.InvalidHookResponse.selector);
             swapRouter.swap(key, swapParams, testSettings, ZERO_BYTES);
         }
-        if (flag.afterSwap) {
+        if (Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_SWAP_FLAG)) {
             // Fail at afterSwap hook.
             mockHooks.setReturnValue(mockHooks.beforeSwap.selector, mockHooks.beforeSwap.selector);
             vm.expectRevert(Hooks.InvalidHookResponse.selector);
@@ -428,7 +457,10 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     }
 
     function test_swap_succeedsWithCorrectSelectors() public {
-        if (!flag.beforeSwap && !flag.afterSwap) {
+        if (
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_SWAP_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_SWAP_FLAG)
+        ) {
             emit log_string("Skip Test");
             return;
         }
@@ -455,7 +487,10 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     }
 
     function test_swap_withHooks_gas() public {
-        if (!flag.beforeSwap && !flag.afterSwap) {
+        if (
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_SWAP_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_SWAP_FLAG)
+        ) {
             emit log_string("Skip Test");
             return;
         }
@@ -480,7 +515,10 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     }
 
     function test_donate_failsWithIncorrectSelectors() public {
-        if (!flag.beforeDonate && !flag.afterDonate) {
+        if (
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_DONATE_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_DONATE_FLAG)
+        ) {
             emit log_string("Skip Test");
             return;
         }
@@ -494,12 +532,12 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         mockHooks.setReturnValue(mockHooks.beforeDonate.selector, bytes4(0xdeadbeef));
         mockHooks.setReturnValue(mockHooks.afterDonate.selector, bytes4(0xdeadbeef));
         
-        if (flag.beforeDonate) {
+        if (Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_DONATE_FLAG)) {
             // Fails at beforeDonate hook.
             vm.expectRevert(Hooks.InvalidHookResponse.selector);
             donateRouter.donate(key, 100, 200, ZERO_BYTES);
         }
-        if (flag.afterDonate) {
+        if (Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_DONATE_FLAG)) {
             // Fail at afterDonate hook.
             mockHooks.setReturnValue(mockHooks.beforeDonate.selector, mockHooks.beforeDonate.selector);
             vm.expectRevert(Hooks.InvalidHookResponse.selector);
@@ -508,7 +546,10 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     }
 
     function test_donate_succeedsWithCorrectSelectors() public {
-        if (!flag.beforeDonate && !flag.afterDonate) {
+        if (
+            !Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_DONATE_FLAG) ||
+            !Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_DONATE_FLAG)
+        ) {
             emit log_string("Skip Test");
             return;
         }
