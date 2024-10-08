@@ -1,0 +1,9 @@
+{
+    "data": {
+        "currency0": "0x363Af415717225D28e66Ef4943f35E17283D8726",
+        "currency1": "0xa9E674B9eF4F9162fb2A452548c1c7775bc357bf",
+        "fee": 0,
+        "tickSpacing": 60,
+        "hooks": "0x3936D9C1296D6d6BDcDa11cf7a6d45b738724440"
+    }
+}

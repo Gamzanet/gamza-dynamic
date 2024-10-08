@@ -128,11 +128,13 @@ library Hooks {
 
     /// @notice performs a hook call using the given calldata on the given hook that doesnt return a delta
     /// @return result The complete data returned by the hook
+    event log_bool(bool);
     function callHook(IHooks self, bytes memory data) internal returns (bytes memory result) {
         bool success;
         assembly ("memory-safe") {
             success := call(gas(), self, 0, add(data, 0x20), mload(data), 0, 0)
         }
+        emit log_bool(success);
         // Revert with FailedHookCall, containing any error message to bubble up
         if (!success) Wrap__FailedHookCall.selector.bubbleUpAndRevertWith(address(self));
 

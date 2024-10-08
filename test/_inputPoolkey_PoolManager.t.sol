@@ -79,8 +79,8 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     function setUp() public {
         // string memory code_json = vm.readFile("test/_json_GasPriceFeesHook.json");
         // string memory code_json = vm.readFile("test/_json_PointsHook.json");
-        // string memory code_json = vm.readFile("test/_json_TakeProfitsHook.json");
-        string memory code_json = vm.readFile("test/_json_another.json");
+        string memory code_json = vm.readFile("test/_json_TakeProfitsHook.json");
+        // string memory code_json = vm.readFile("test/_json_another4.json");
 
         address _currency0 = vm.parseJsonAddress(code_json, ".data.currency0");
         address _currency1 = vm.parseJsonAddress(code_json, ".data.currency1");
@@ -90,32 +90,34 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
         inputkey.currency0 = Currency.wrap(_currency0);
         inputkey.currency1 = Currency.wrap(_currency1);
-        inputkey.fee = (_fee < 100) ? 100 : _fee;
+        // inputkey.fee = (_fee < 100) ? 100 : _fee;
+        inputkey.fee = _fee;
         inputkey.tickSpacing = _tickSpacing;
         inputkey.hooks = IHooks(_hooks);
 
-        (bool success, bytes memory returnData) = address(inputkey.hooks).call(abi.encodeWithSignature("getHookPermissions()"));
-        flag = abi.decode(returnData, (Hooks.Permissions));
-        emit permission(flag);
-
-        deal(address(Currency.unwrap(inputkey.currency0)), address(this), type(uint256).max);
-        deal(address(Currency.unwrap(inputkey.currency1)), address(this), type(uint256).max);
+        // (bool success, bytes memory returnData) = address(inputkey.hooks).call(abi.encodeWithSignature("getHookPermissions()"));
+        // flag = abi.decode(returnData, (Hooks.Permissions));
+        // emit permission(flag);
 
         hookAddr = address(inputkey.hooks);
         
         // eth-sepolia
-        // manager = IPoolManager(0xe8e23e97fa135823143d6b9cba9c699040d51f70);
-        // swapRouter = PoolSwapTest(0x0937c4d65d7cddbf02e75b88dd33f536b201c2a6);
-        // modifyLiquidityRouter = PoolModifyLiquidityTest(0x94df58ccb1ac6e5958b8ee1e2491f224414a2bf7);
+        // manager = IPoolManager(0xE8E23e97Fa135823143d6b9Cba9c699040D51F70);
+        // swapRouter = PoolSwapTest(0x0937C4D65d7CddbF02E75B88Dd33f536b201c2a6);
+        // modifyLiquidityRouter = PoolModifyLiquidityTest(0x94df58ccB1ac6e5958B8ee1e2491F224414A2bf7);
 
         // base-sepolia
         manager = IPoolManager(0x39BF2eFF94201cfAA471932655404F63315147a4);
         swapRouter = PoolSwapTest(0xFf34e285F8ED393E366046153e3C16484A4dD674);
         modifyLiquidityRouter = PoolModifyLiquidityTest(0x841B5A0b3DBc473c8A057E2391014aa4C4751351);
 
-        MockERC20(Currency.unwrap(inputkey.currency0)).approve(address(swapRouter), Constants.MAX_UINT256);
+        if (!inputkey.currency0.isAddressZero()) {
+            deal(address(Currency.unwrap(inputkey.currency0)), address(this), type(uint256).max);
+            MockERC20(Currency.unwrap(inputkey.currency0)).approve(address(swapRouter), Constants.MAX_UINT256);
+            MockERC20(Currency.unwrap(inputkey.currency0)).approve(address(modifyLiquidityRouter), Constants.MAX_UINT256);
+        }
+        deal(address(Currency.unwrap(inputkey.currency1)), address(this), type(uint256).max);
         MockERC20(Currency.unwrap(inputkey.currency1)).approve(address(swapRouter), Constants.MAX_UINT256);
-        MockERC20(Currency.unwrap(inputkey.currency0)).approve(address(modifyLiquidityRouter), Constants.MAX_UINT256);
         MockERC20(Currency.unwrap(inputkey.currency1)).approve(address(modifyLiquidityRouter), Constants.MAX_UINT256);
     }
 
@@ -129,14 +131,14 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         }
         sqrtPriceX96 = uint160(bound(sqrtPriceX96, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE - 1));
 
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
 
         MockContract mockContract = new MockContract();
         vm.etch(mockAddr, address(mockContract).code);
 
         MockContract(mockAddr).setImplementation(hookAddr);
 
-        (key,) = initPool(inputkey.currency0, inputkey.currency1, IHooks(mockAddr), inputkey.fee, sqrtPriceX96, ZERO_BYTES);
+        (key,) = initPool(inputkey.currency0, inputkey.currency1, IHooks(mockAddr), inputkey.fee, inputkey.tickSpacing, sqrtPriceX96, ZERO_BYTES);
     }
 
     function test_addLiquidity_succeedsWithHooksIfInitialized(uint160 sqrtPriceX96) public {
@@ -149,15 +151,18 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         }
         sqrtPriceX96 = uint160(bound(sqrtPriceX96, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE - 1));
 
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
 
         MockContract mockContract = new MockContract();
         vm.etch(mockAddr, address(mockContract).code);
 
         MockContract(mockAddr).setImplementation(hookAddr);
 
-        (key,) = initPool(inputkey.currency0, inputkey.currency1, IHooks(mockAddr), inputkey.fee, sqrtPriceX96, ZERO_BYTES);
-        BalanceDelta balanceDelta = modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        (key,) = initPool(inputkey.currency0, inputkey.currency1, IHooks(mockAddr), inputkey.fee, inputkey.tickSpacing, sqrtPriceX96, ZERO_BYTES);
+        
+        BalanceDelta balanceDelta;
+        if (currency0.isAddressZero()) balanceDelta = modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        else balanceDelta = modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
         
         if (Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_ADD_LIQUIDITY_FLAG)) {
             bytes32 beforeSelector = MockHooks.beforeAddLiquidity.selector;
@@ -190,17 +195,21 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         }
         sqrtPriceX96 = uint160(bound(sqrtPriceX96, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE - 1));
 
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
 
         MockContract mockContract = new MockContract();
         vm.etch(mockAddr, address(mockContract).code);
 
         MockContract(mockAddr).setImplementation(hookAddr);
 
-        (key,) = initPool(inputkey.currency0, inputkey.currency1, IHooks(mockAddr), inputkey.fee, sqrtPriceX96, ZERO_BYTES);
+        (key,) = initPool(inputkey.currency0, inputkey.currency1, IHooks(mockAddr), inputkey.fee, inputkey.tickSpacing, sqrtPriceX96, ZERO_BYTES);
         
-        modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
-        BalanceDelta balanceDelta = modifyLiquidityRouter.modifyLiquidity(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
+        if (currency0.isAddressZero()) modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        else modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        
+        BalanceDelta balanceDelta;
+        if (currency0.isAddressZero()) balanceDelta = modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
+        else balanceDelta = modifyLiquidityRouter.modifyLiquidity(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
 
         if (Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG)) {
             bytes32 beforeSelector = MockHooks.beforeRemoveLiquidity.selector;
@@ -231,12 +240,12 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
         
-        (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, SQRT_PRICE_1_1, ZERO_BYTES);
+        (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
 
         mockHooks.setReturnValue(mockHooks.beforeAddLiquidity.selector, bytes4(0xdeadbeef));
         mockHooks.setReturnValue(mockHooks.afterAddLiquidity.selector, bytes4(0xdeadbeef));
@@ -244,14 +253,15 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         if (Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_ADD_LIQUIDITY_FLAG)) {
             // Fails at beforeAddLiquidity hook.
             vm.expectRevert(Hooks.InvalidHookResponse.selector);
-            modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+            if (currency0.isAddressZero()) modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+            else modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
         }
         if (Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_ADD_LIQUIDITY_FLAG)) {
             // Fail at afterAddLiquidity hook.
             mockHooks.setReturnValue(mockHooks.beforeAddLiquidity.selector, mockHooks.beforeAddLiquidity.selector);
             vm.expectRevert(Hooks.InvalidHookResponse.selector);
-            modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
-        }
+            if (currency0.isAddressZero()) modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+            else modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);        }
     }
 
     function test_removeLiquidity_failsWithIncorrectSelectors() public {
@@ -262,27 +272,31 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
 
-        (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, SQRT_PRICE_1_1, ZERO_BYTES);
-        modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
-
+        (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
+        
+        if (currency0.isAddressZero()) modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        else modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        
         mockHooks.setReturnValue(mockHooks.beforeRemoveLiquidity.selector, bytes4(0xdeadbeef));
         mockHooks.setReturnValue(mockHooks.afterRemoveLiquidity.selector, bytes4(0xdeadbeef));
 
         if (Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG)) {
             // Fails at beforeRemoveLiquidity hook.
             vm.expectRevert(Hooks.InvalidHookResponse.selector);
-            modifyLiquidityRouter.modifyLiquidity(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
+            if (currency0.isAddressZero()) modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
+            else modifyLiquidityRouter.modifyLiquidity(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
         }
         if (Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_REMOVE_LIQUIDITY_FLAG)) {
             // Fail at afterRemoveLiquidity hook.
             mockHooks.setReturnValue(mockHooks.beforeRemoveLiquidity.selector, mockHooks.beforeRemoveLiquidity.selector);
             vm.expectRevert(Hooks.InvalidHookResponse.selector);
-            modifyLiquidityRouter.modifyLiquidity(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
+            if (currency0.isAddressZero()) modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
+            else modifyLiquidityRouter.modifyLiquidity(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
         }
     }
 
@@ -294,12 +308,12 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
 
-        (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, SQRT_PRICE_1_1, ZERO_BYTES);
+        (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
 
         mockHooks.setReturnValue(mockHooks.beforeAddLiquidity.selector, mockHooks.beforeAddLiquidity.selector);
         mockHooks.setReturnValue(mockHooks.afterAddLiquidity.selector, mockHooks.afterAddLiquidity.selector);
@@ -314,7 +328,8 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             LIQUIDITY_PARAMS.salt
         );
 
-        modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        if (currency0.isAddressZero()) modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        else modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
     }
 
     function test_removeLiquidity_succeedsWithCorrectSelectors() public {
@@ -325,13 +340,15 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
 
-        (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, SQRT_PRICE_1_1, ZERO_BYTES);
-        modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
+        
+        if (currency0.isAddressZero()) modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        else modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
 
         mockHooks.setReturnValue(mockHooks.beforeRemoveLiquidity.selector, mockHooks.beforeRemoveLiquidity.selector);
         mockHooks.setReturnValue(mockHooks.afterRemoveLiquidity.selector, mockHooks.afterRemoveLiquidity.selector);
@@ -346,7 +363,8 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             REMOVE_LIQUIDITY_PARAMS.salt
         );
 
-        modifyLiquidityRouter.modifyLiquidity(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
+        if (currency0.isAddressZero()) modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
+        else modifyLiquidityRouter.modifyLiquidity(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
     }
 
     function test_addLiquidity_withHooks_gas() public {
@@ -357,15 +375,16 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
 
-        (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, SQRT_PRICE_1_1, ZERO_BYTES);
+        (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
 
-        modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
-        snapLastCall("addLiquidity with empty hook");
+        if (currency0.isAddressZero()) modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        else modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        snapLastCall("addLiquidity with hook");
     }
 
     function test_removeLiquidity_withHooks_gas() public {
@@ -376,16 +395,23 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
 
-        (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, SQRT_PRICE_1_1, ZERO_BYTES);
-        modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
 
-        modifyLiquidityRouter.modifyLiquidity(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
-        snapLastCall("removeLiquidity with empty hook");
+        if (currency0.isAddressZero()) {
+            modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+            modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
+        }
+        else {
+            modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+            modifyLiquidityRouter.modifyLiquidity(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
+        }
+
+        snapLastCall("removeLiquidity with hook");
     }
 
     function test_swap_succeedsWithHooksIfInitialized() public {
@@ -396,20 +422,28 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
 
         MockContract mockContract = new MockContract();
         vm.etch(mockAddr, address(mockContract).code);
 
         MockContract(mockAddr).setImplementation(hookAddr);
 
-        // (key,) = initPoolAndAddLiquidity(currency0, currency1, IHooks(mockAddr), inputkey.fee, SQRT_PRICE_1_1, ZERO_BYTES);
-        (key,) = initPoolAndAddLiquidity(inputkey.currency0, inputkey.currency1, IHooks(mockAddr), inputkey.fee, SQRT_PRICE_1_1, ZERO_BYTES);
+        if (inputkey.currency0.isAddressZero()) {
+            (key,) = initPool(inputkey.currency0, inputkey.currency1, IHooks(mockAddr), inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
+            modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        }
+        else {
+            (key,) = initPool(inputkey.currency0, inputkey.currency1, IHooks(mockAddr), inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
+            modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        }
 
         PoolSwapTest.TestSettings memory testSettings =
             PoolSwapTest.TestSettings({takeClaims: true, settleUsingBurn: false});
 
-        BalanceDelta balanceDelta = swapRouter.swap(key, SWAP_PARAMS, testSettings, ZERO_BYTES);
+        BalanceDelta balanceDelta;
+        if (inputkey.currency0.isAddressZero()) balanceDelta = swapRouter.swap{value: 100}(key, SWAP_PARAMS, testSettings, ZERO_BYTES);
+        else balanceDelta = swapRouter.swap(key, SWAP_PARAMS, testSettings, ZERO_BYTES);
 
         if (Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_SWAP_FLAG)) {
             bytes32 beforeSelector = MockHooks.beforeSwap.selector;
@@ -433,12 +467,19 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
-
-        (key,) = initPoolAndAddLiquidity(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, SQRT_PRICE_1_1, ZERO_BYTES);
+        
+        if (inputkey.currency0.isAddressZero()) {
+            (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
+            modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        }
+        else {
+            (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
+            modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        }
 
         IPoolManager.SwapParams memory swapParams =
             IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 10, sqrtPriceLimitX96: SQRT_PRICE_1_2});
@@ -452,13 +493,15 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         if (Hooks.hasPermission(inputkey.hooks, Hooks.BEFORE_SWAP_FLAG)) {
             // Fails at beforeSwap hook.
             vm.expectRevert(Hooks.InvalidHookResponse.selector);
-            swapRouter.swap(key, swapParams, testSettings, ZERO_BYTES);
+            if (inputkey.currency0.isAddressZero()) swapRouter.swap{value: 100}(key, swapParams, testSettings, ZERO_BYTES);
+            else swapRouter.swap(key, swapParams, testSettings, ZERO_BYTES);
         }
         if (Hooks.hasPermission(inputkey.hooks, Hooks.AFTER_SWAP_FLAG)) {
             // Fail at afterSwap hook.
             mockHooks.setReturnValue(mockHooks.beforeSwap.selector, mockHooks.beforeSwap.selector);
             vm.expectRevert(Hooks.InvalidHookResponse.selector);
-            swapRouter.swap(key, swapParams, testSettings, ZERO_BYTES);
+            if (inputkey.currency0.isAddressZero()) swapRouter.swap{value: 100}(key, swapParams, testSettings, ZERO_BYTES);
+            else swapRouter.swap(key, swapParams, testSettings, ZERO_BYTES);
         }
     }
 
@@ -470,12 +513,19 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
 
-        (key,) = initPoolAndAddLiquidity(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, SQRT_PRICE_1_1, ZERO_BYTES);
+        if (inputkey.currency0.isAddressZero()) {
+            (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
+            modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        }
+        else {
+            (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
+            modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        }
 
         IPoolManager.SwapParams memory swapParams =
             IPoolManager.SwapParams({zeroForOne: true, amountSpecified: -10, sqrtPriceLimitX96: SQRT_PRICE_1_2});
@@ -489,7 +539,8 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         // vm.expectEmit(true, true, true, true);
         // emit Swap(key.toId(), address(swapRouter), -10, 8, 79228162514264336880490487708, 1e18, -1, 100);
 
-        swapRouter.swap(key, swapParams, testSettings, ZERO_BYTES);
+        if (inputkey.currency0.isAddressZero()) swapRouter.swap{value: 100}(key, swapParams, testSettings, ZERO_BYTES);
+        else swapRouter.swap(key, swapParams, testSettings, ZERO_BYTES);
     }
 
     function test_swap_withHooks_gas() public {
@@ -500,23 +551,32 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
 
-        (key,) = initPoolAndAddLiquidity(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, SQRT_PRICE_1_1, ZERO_BYTES);
+        if (inputkey.currency0.isAddressZero()) {
+            (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
+            modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        }
+        else {
+            (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
+            modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        }
 
         PoolSwapTest.TestSettings memory testSettings =
             PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false});
 
-        swapRouter.swap(key, SWAP_PARAMS, testSettings, ZERO_BYTES);
+        if (inputkey.currency0.isAddressZero()) swapRouter.swap{value: 100}(key, SWAP_PARAMS, testSettings, ZERO_BYTES);
+        else swapRouter.swap(key, SWAP_PARAMS, testSettings, ZERO_BYTES);
 
         IPoolManager.SwapParams memory swapParams =
             IPoolManager.SwapParams({zeroForOne: true, amountSpecified: -100, sqrtPriceLimitX96: SQRT_PRICE_1_4});
         testSettings = PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false});
 
-        swapRouter.swap(key, swapParams, testSettings, ZERO_BYTES);
+        if (inputkey.currency0.isAddressZero()) swapRouter.swap{value: 100}(key, swapParams, testSettings, ZERO_BYTES);
+        else swapRouter.swap(key, swapParams, testSettings, ZERO_BYTES);
         snapLastCall("swap with hooks");
     }
 
@@ -528,12 +588,19 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
 
-        (key,) = initPoolAndAddLiquidity(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, SQRT_PRICE_1_1, ZERO_BYTES);
+        if (inputkey.currency0.isAddressZero()) {
+            (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
+            modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        }
+        else {
+            (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
+            modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        }
 
         mockHooks.setReturnValue(mockHooks.beforeDonate.selector, bytes4(0xdeadbeef));
         mockHooks.setReturnValue(mockHooks.afterDonate.selector, bytes4(0xdeadbeef));
@@ -559,13 +626,20 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
 
-        (key,) = initPoolAndAddLiquidity(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, SQRT_PRICE_1_1, ZERO_BYTES);
-
+        if (inputkey.currency0.isAddressZero()) {
+            (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
+            modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        }
+        else {
+            (key,) = initPool(inputkey.currency0, inputkey.currency1, mockHooks, inputkey.fee, inputkey.tickSpacing, SQRT_PRICE_1_1, ZERO_BYTES);
+            modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
+        }
+        
         mockHooks.setReturnValue(mockHooks.beforeDonate.selector, mockHooks.beforeDonate.selector);
         mockHooks.setReturnValue(mockHooks.afterDonate.selector, mockHooks.afterDonate.selector);
 
