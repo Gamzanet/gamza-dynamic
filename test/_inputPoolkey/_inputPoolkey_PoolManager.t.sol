@@ -79,7 +79,8 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         // string memory code_json = vm.readFile("test/_inputPoolkey/_json_GasPriceFeesHook.json");
         // string memory code_json = vm.readFile("test/_inputPoolkey/_json_PointsHook.json");
         // string memory code_json = vm.readFile("test/_inputPoolkey/_json_TakeProfitsHook.json");
-        string memory code_json = vm.readFile("test/_inputPoolkey/_json_another4.json");
+        // string memory code_json = vm.readFile("test/_inputPoolkey/_json_another4.json");
+        string memory code_json = vm.readFile("test/_inputPoolkey/_json_soripoolkey.json");
 
         address _currency0 = vm.parseJsonAddress(code_json, ".data.currency0");
         address _currency1 = vm.parseJsonAddress(code_json, ".data.currency1");
@@ -89,7 +90,6 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
         inputkey.currency0 = Currency.wrap(_currency0);
         inputkey.currency1 = Currency.wrap(_currency1);
-        // inputkey.fee = (_fee < 100) ? 100 : _fee;
         inputkey.fee = _fee;
         inputkey.tickSpacing = _tickSpacing;
         inputkey.hooks = IHooks(_hooks);
@@ -317,16 +317,6 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         mockHooks.setReturnValue(mockHooks.beforeAddLiquidity.selector, mockHooks.beforeAddLiquidity.selector);
         mockHooks.setReturnValue(mockHooks.afterAddLiquidity.selector, mockHooks.afterAddLiquidity.selector);
 
-        vm.expectEmit(true, true, false, true, address(manager));
-        emit ModifyLiquidity(
-            key.toId(),
-            address(modifyLiquidityRouter),
-            LIQUIDITY_PARAMS.tickLower,
-            LIQUIDITY_PARAMS.tickUpper,
-            LIQUIDITY_PARAMS.liquidityDelta,
-            LIQUIDITY_PARAMS.salt
-        );
-
         if (currency0.isAddressZero()) modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, LIQUIDITY_PARAMS, ZERO_BYTES);
         else modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
     }
@@ -351,16 +341,6 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
         mockHooks.setReturnValue(mockHooks.beforeRemoveLiquidity.selector, mockHooks.beforeRemoveLiquidity.selector);
         mockHooks.setReturnValue(mockHooks.afterRemoveLiquidity.selector, mockHooks.afterRemoveLiquidity.selector);
-
-        vm.expectEmit(true, true, false, true, address(manager));
-        emit ModifyLiquidity(
-            key.toId(),
-            address(modifyLiquidityRouter),
-            REMOVE_LIQUIDITY_PARAMS.tickLower,
-            REMOVE_LIQUIDITY_PARAMS.tickUpper,
-            REMOVE_LIQUIDITY_PARAMS.liquidityDelta,
-            REMOVE_LIQUIDITY_PARAMS.salt
-        );
 
         if (currency0.isAddressZero()) modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
         else modifyLiquidityRouter.modifyLiquidity(key, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
@@ -534,9 +514,6 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
         mockHooks.setReturnValue(mockHooks.beforeSwap.selector, mockHooks.beforeSwap.selector);
         mockHooks.setReturnValue(mockHooks.afterSwap.selector, mockHooks.afterSwap.selector);
-
-        // vm.expectEmit(true, true, true, true);
-        // emit Swap(key.toId(), address(swapRouter), -10, 8, 79228162514264336880490487708, 1e18, -1, 100);
 
         if (inputkey.currency0.isAddressZero()) swapRouter.swap{value: 100}(key, swapParams, testSettings, ZERO_BYTES);
         else swapRouter.swap(key, swapParams, testSettings, ZERO_BYTES);

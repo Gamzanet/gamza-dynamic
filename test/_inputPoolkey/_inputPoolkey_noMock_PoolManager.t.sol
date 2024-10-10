@@ -78,7 +78,8 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         // string memory code_json = vm.readFile("test/_json_GasPriceFeesHook.json");
         // string memory code_json = vm.readFile("test/_json_PointsHook.json");
         // string memory code_json = vm.readFile("test/_json_TakeProfitsHook.json");
-        string memory code_json = vm.readFile("test/_json_another4.json");
+        // string memory code_json = vm.readFile("test/_json_another4.json");
+        string memory code_json = vm.readFile("test/_inputPoolkey/_json_soripoolkey.json");
 
         address _currency0 = vm.parseJsonAddress(code_json, ".data.currency0");
         address _currency1 = vm.parseJsonAddress(code_json, ".data.currency1");
