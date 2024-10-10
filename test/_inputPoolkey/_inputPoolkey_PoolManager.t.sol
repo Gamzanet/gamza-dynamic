@@ -2,40 +2,39 @@
 pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
-import {IHooks} from "../src/interfaces/IHooks.sol";
-import {Hooks} from "../src/libraries/Hooks.sol";
-import {IPoolManager} from "../src/interfaces/IPoolManager.sol";
-import {IProtocolFees} from "../src/interfaces/IProtocolFees.sol";
-import {IProtocolFeeController} from "../src/interfaces/IProtocolFeeController.sol";
-import {PoolManager} from "../src/PoolManager.sol";
-import {TickMath} from "../src/libraries/TickMath.sol";
-import {Pool} from "../src/libraries/Pool.sol";
-import {Deployers} from "./utils/Deployers.sol";
-import {Currency, CurrencyLibrary} from "../src/types/Currency.sol";
-import {MockHooks} from "../src/test/MockHooks.sol";
-import {MockContract} from "../src/test/MockContract.sol";
-import {EmptyTestHooks} from "../src/test/EmptyTestHooks.sol";
-import {PoolKey} from "../src/types/PoolKey.sol";
-import {PoolModifyLiquidityTest} from "../src/test/PoolModifyLiquidityTest.sol";
-import {BalanceDelta, BalanceDeltaLibrary} from "../src/types/BalanceDelta.sol";
-import {PoolSwapTest} from "../src/test/PoolSwapTest.sol";
-import {TestInvalidERC20} from "../src/test/TestInvalidERC20.sol";
+import {IHooks} from "../../src/interfaces/IHooks.sol";
+import {Hooks} from "../../src/libraries/Hooks.sol";
+import {IPoolManager} from "../../src/interfaces/IPoolManager.sol";
+import {IProtocolFees} from "../../src/interfaces/IProtocolFees.sol";
+import {IProtocolFeeController} from "../../src/interfaces/IProtocolFeeController.sol";
+import {PoolManager} from "../../src/PoolManager.sol";
+import {TickMath} from "../../src/libraries/TickMath.sol";
+import {Pool} from "../../src/libraries/Pool.sol";
+import {Deployers} from "../utils/Deployers.sol";
+import {Currency, CurrencyLibrary} from "../../src/types/Currency.sol";
+import {MockHooks} from "../../src/test/MockHooks.sol";
+import {MockContract} from "../../src/test/MockContract.sol";
+import {EmptyTestHooks} from "../../src/test/EmptyTestHooks.sol";
+import {PoolKey} from "../../src/types/PoolKey.sol";
+import {PoolModifyLiquidityTest} from "../../src/test/PoolModifyLiquidityTest.sol";
+import {BalanceDelta, BalanceDeltaLibrary} from "../../src/types/BalanceDelta.sol";
+import {PoolSwapTest} from "../../src/test/PoolSwapTest.sol";
+import {TestInvalidERC20} from "../../src/test/TestInvalidERC20.sol";
 import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";
-import {PoolEmptyUnlockTest} from "../src/test/PoolEmptyUnlockTest.sol";
-import {Action} from "../src/test/PoolNestedActionsTest.sol";
-import {PoolId} from "../src/types/PoolId.sol";
-import {LPFeeLibrary} from "../src/libraries/LPFeeLibrary.sol";
-import {Position} from "../src/libraries/Position.sol";
-import {Constants} from "./utils/Constants.sol";
-import {SafeCast} from "../src/libraries/SafeCast.sol";
-import {AmountHelpers} from "./utils/AmountHelpers.sol";
-import {ProtocolFeeLibrary} from "../src/libraries/ProtocolFeeLibrary.sol";
-import {IProtocolFees} from "../src/interfaces/IProtocolFees.sol";
-import {StateLibrary} from "../src/libraries/StateLibrary.sol";
-import {Actions} from "../src/test/ActionsRouter.sol";
+import {PoolEmptyUnlockTest} from "../../src/test/PoolEmptyUnlockTest.sol";
+import {Action} from "../../src/test/PoolNestedActionsTest.sol";
+import {PoolId} from "../../src/types/PoolId.sol";
+import {LPFeeLibrary} from "../../src/libraries/LPFeeLibrary.sol";
+import {Position} from "../../src/libraries/Position.sol";
+import {Constants} from "../utils/Constants.sol";
+import {SafeCast} from "../../src/libraries/SafeCast.sol";
+import {AmountHelpers} from "../utils/AmountHelpers.sol";
+import {ProtocolFeeLibrary} from "../../src/libraries/ProtocolFeeLibrary.sol";
+import {IProtocolFees} from "../../src/interfaces/IProtocolFees.sol";
+import {StateLibrary} from "../../src/libraries/StateLibrary.sol";
+import {Actions} from "../../src/test/ActionsRouter.sol";
 
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
-
 contract PoolManagerTest is Test, Deployers, GasSnapshot {
     using Hooks for IHooks;
     using LPFeeLibrary for uint24;
@@ -77,10 +76,10 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     Hooks.Permissions flag;
     event permission(Hooks.Permissions);
     function setUp() public {
-        // string memory code_json = vm.readFile("test/_json_GasPriceFeesHook.json");
-        // string memory code_json = vm.readFile("test/_json_PointsHook.json");
-        string memory code_json = vm.readFile("test/_json_TakeProfitsHook.json");
-        // string memory code_json = vm.readFile("test/_json_another4.json");
+        // string memory code_json = vm.readFile("test/_inputPoolkey/_json_GasPriceFeesHook.json");
+        // string memory code_json = vm.readFile("test/_inputPoolkey/_json_PointsHook.json");
+        // string memory code_json = vm.readFile("test/_inputPoolkey/_json_TakeProfitsHook.json");
+        string memory code_json = vm.readFile("test/_inputPoolkey/_json_another4.json");
 
         address _currency0 = vm.parseJsonAddress(code_json, ".data.currency0");
         address _currency1 = vm.parseJsonAddress(code_json, ".data.currency1");
@@ -95,9 +94,9 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         inputkey.tickSpacing = _tickSpacing;
         inputkey.hooks = IHooks(_hooks);
 
-        // (bool success, bytes memory returnData) = address(inputkey.hooks).call(abi.encodeWithSignature("getHookPermissions()"));
-        // flag = abi.decode(returnData, (Hooks.Permissions));
-        // emit permission(flag);
+        (bool success, bytes memory returnData) = address(inputkey.hooks).call(abi.encodeWithSignature("getHookPermissions()"));
+        flag = abi.decode(returnData, (Hooks.Permissions));
+        emit permission(flag);
 
         hookAddr = address(inputkey.hooks);
         

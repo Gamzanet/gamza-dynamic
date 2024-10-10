@@ -2,37 +2,37 @@
 pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
-import {IHooks} from "../src/interfaces/IHooks.sol";
-import {Hooks} from "../src/libraries/Hooks.sol";
-import {IPoolManager} from "../src/interfaces/IPoolManager.sol";
-import {IProtocolFees} from "../src/interfaces/IProtocolFees.sol";
-import {IProtocolFeeController} from "../src/interfaces/IProtocolFeeController.sol";
-import {PoolManager} from "../src/PoolManager.sol";
-import {TickMath} from "../src/libraries/TickMath.sol";
-import {Pool} from "../src/libraries/Pool.sol";
-import {Deployers} from "./utils/Deployers.sol";
-import {Currency, CurrencyLibrary} from "../src/types/Currency.sol";
-import {MockHooks} from "../src/test/MockHooks.sol";
-import {MockContract} from "../src/test/MockContract.sol";
-import {EmptyTestHooks} from "../src/test/EmptyTestHooks.sol";
-import {PoolKey} from "../src/types/PoolKey.sol";
-import {PoolModifyLiquidityTest} from "../src/test/PoolModifyLiquidityTest.sol";
-import {BalanceDelta, BalanceDeltaLibrary} from "../src/types/BalanceDelta.sol";
-import {PoolSwapTest} from "../src/test/PoolSwapTest.sol";
-import {TestInvalidERC20} from "../src/test/TestInvalidERC20.sol";
+import {IHooks} from "../../src/interfaces/IHooks.sol";
+import {Hooks} from "../../src/libraries/Hooks.sol";
+import {IPoolManager} from "../../src/interfaces/IPoolManager.sol";
+import {IProtocolFees} from "../../src/interfaces/IProtocolFees.sol";
+import {IProtocolFeeController} from "../../src/interfaces/IProtocolFeeController.sol";
+import {PoolManager} from "../../src/PoolManager.sol";
+import {TickMath} from "../../src/libraries/TickMath.sol";
+import {Pool} from "../../src/libraries/Pool.sol";
+import {Deployers} from "../utils/Deployers.sol";
+import {Currency, CurrencyLibrary} from "../../src/types/Currency.sol";
+import {MockHooks} from "../../src/test/MockHooks.sol";
+import {MockContract} from "../../src/test/MockContract.sol";
+import {EmptyTestHooks} from "../../src/test/EmptyTestHooks.sol";
+import {PoolKey} from "../../src/types/PoolKey.sol";
+import {PoolModifyLiquidityTest} from "../../src/test/PoolModifyLiquidityTest.sol";
+import {BalanceDelta, BalanceDeltaLibrary} from "../../src/types/BalanceDelta.sol";
+import {PoolSwapTest} from "../../src/test/PoolSwapTest.sol";
+import {TestInvalidERC20} from "../../src/test/TestInvalidERC20.sol";
 import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";
-import {PoolEmptyUnlockTest} from "../src/test/PoolEmptyUnlockTest.sol";
-import {Action} from "../src/test/PoolNestedActionsTest.sol";
-import {PoolId} from "../src/types/PoolId.sol";
-import {LPFeeLibrary} from "../src/libraries/LPFeeLibrary.sol";
-import {Position} from "../src/libraries/Position.sol";
-import {Constants} from "./utils/Constants.sol";
-import {SafeCast} from "../src/libraries/SafeCast.sol";
-import {AmountHelpers} from "./utils/AmountHelpers.sol";
-import {ProtocolFeeLibrary} from "../src/libraries/ProtocolFeeLibrary.sol";
-import {IProtocolFees} from "../src/interfaces/IProtocolFees.sol";
-import {StateLibrary} from "../src/libraries/StateLibrary.sol";
-import {Actions} from "../src/test/ActionsRouter.sol";
+import {PoolEmptyUnlockTest} from "../../src/test/PoolEmptyUnlockTest.sol";
+import {Action} from "../../src/test/PoolNestedActionsTest.sol";
+import {PoolId} from "../../src/types/PoolId.sol";
+import {LPFeeLibrary} from "../../src/libraries/LPFeeLibrary.sol";
+import {Position} from "../../src/libraries/Position.sol";
+import {Constants} from "../utils/Constants.sol";
+import {SafeCast} from "../../src/libraries/SafeCast.sol";
+import {AmountHelpers} from "../utils/AmountHelpers.sol";
+import {ProtocolFeeLibrary} from "../../src/libraries/ProtocolFeeLibrary.sol";
+import {IProtocolFees} from "../../src/interfaces/IProtocolFees.sol";
+import {StateLibrary} from "../../src/libraries/StateLibrary.sol";
+import {Actions} from "../../src/test/ActionsRouter.sol";
 
 contract PoolManagerTest is Test, Deployers, GasSnapshot {
     using Hooks for IHooks;
@@ -76,17 +76,17 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     function setUp() public {
         address forFlag = address(uint160(Hooks.ALL_HOOK_MASK));
 
-        // string memory code_json = vm.readFile("test/_kenny_ArrakisHookV1.json");
-        // string memory code_json = vm.readFile("test/_kenny_GasPriceFeesHook.json");
-        // string memory code_json = vm.readFile("test/_kenny_PointsHook.json");
-        string memory code_json = vm.readFile("test/_kenny_TakeProfitsHook.json");
-        // string memory code_json = vm.readFile("test/_sori_backdoor.json");
-        // string memory code_json = vm.readFile("test/_sori_slot0-oracle.json");
-        // string memory code_json = vm.readFile("test/_sori_time.json");
+        // string memory code_json = vm.readFile("test/_inputBytecode/_kenny_ArrakisHookV1.json");
+        // string memory code_json = vm.readFile("test/_inputBytecode/_kenny_GasPriceFeesHook.json");
+        string memory code_json = vm.readFile("test/_inputBytecode/_kenny_PointsHook.json");
+        // string memory code_json = vm.readFile("test/_inputBytecode/_kenny_TakeProfitsHook.json");
+        // string memory code_json = vm.readFile("test/_inputBytecode/_sori_backdoor.json");
+        // string memory code_json = vm.readFile("test/_inputBytecode/_sori_slot0-oracle.json");
+        // string memory code_json = vm.readFile("test/_inputBytecode/_sori_time.json");
         
-        bytes memory bytecode = vm.parseJsonBytes(code_json, ".bytecode.object");
-        bytes memory deployBytecode = vm.parseJsonBytes(code_json, ".deployedBytecode.object"); // runtimecode
-        vm.etch(forFlag, deployBytecode);
+        bytes memory _bytecode = vm.parseJsonBytes(code_json, ".bytecode.object");
+        bytes memory _deployBytecode = vm.parseJsonBytes(code_json, ".deployedBytecode.object"); // runtimecode
+        vm.etch(forFlag, _deployBytecode);
 
         (bool success, bytes memory returnData) = forFlag.call(abi.encodeWithSignature("getHookPermissions()"));
         flag = abi.decode(returnData, (Hooks.Permissions));
@@ -95,12 +95,12 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         // bool isDynamic = abi.decode(returnData, (bool));
         // FEE = isDynamic ? LPFeeLibrary.DYNAMIC_FEE_FLAG : Constants.FEE_MEDIUM;
 
-        FEE = LPFeeLibrary.DYNAMIC_FEE_FLAG;
-        // FEE = Constants.FEE_MEDIUM;
+        // FEE = LPFeeLibrary.DYNAMIC_FEE_FLAG;
+        FEE = Constants.FEE_MEDIUM;
 
         initializeManagerRoutersAndPoolsWithLiq(IHooks(address(0)));
 
-        bytes memory withconstructor = abi.encodePacked(bytecode, abi.encode(manager, "test", "test"));
+        bytes memory withconstructor = abi.encodePacked(_bytecode, abi.encode(manager, "test", "test"));
         vm.etch(hookAddr, withconstructor);
         (success, returnData) = hookAddr.call("");
         vm.etch(hookAddr, returnData);
@@ -113,7 +113,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         }
         sqrtPriceX96 = uint160(bound(sqrtPriceX96, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE - 1));
 
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) | 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
 
         MockContract mockContract = new MockContract();
         vm.etch(mockAddr, address(mockContract).code);
@@ -130,7 +130,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         }
         sqrtPriceX96 = uint160(bound(sqrtPriceX96, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE - 1));
 
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) | 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
 
         MockContract mockContract = new MockContract();
         vm.etch(mockAddr, address(mockContract).code);
@@ -140,7 +140,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         (key,) = initPool(currency0, currency1, IHooks(mockAddr), FEE, sqrtPriceX96, ZERO_BYTES);
 
         BalanceDelta balanceDelta = modifyLiquidityRouter.modifyLiquidity(key, LIQUIDITY_PARAMS, ZERO_BYTES);
-        
+
         if (flag.beforeAddLiquidity) {
             bytes32 beforeSelector = MockHooks.beforeAddLiquidity.selector;
             bytes memory beforeParams = abi.encode(address(modifyLiquidityRouter), key, LIQUIDITY_PARAMS, ZERO_BYTES);
@@ -169,7 +169,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         }
         sqrtPriceX96 = uint160(bound(sqrtPriceX96, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE - 1));
 
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) | 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
 
         MockContract mockContract = new MockContract();
         vm.etch(mockAddr, address(mockContract).code);
@@ -207,11 +207,11 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) | 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
-        
+
         (key,) = initPool(currency0, currency1, mockHooks, FEE, SQRT_PRICE_1_1, ZERO_BYTES);
 
         mockHooks.setReturnValue(mockHooks.beforeAddLiquidity.selector, bytes4(0xdeadbeef));
@@ -235,7 +235,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) | 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
@@ -264,7 +264,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) | 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
@@ -292,7 +292,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) | 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
@@ -321,7 +321,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) | 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
@@ -337,7 +337,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) | 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
@@ -354,7 +354,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) | 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
 
         MockContract mockContract = new MockContract();
         vm.etch(mockAddr, address(mockContract).code);
@@ -367,6 +367,9 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             PoolSwapTest.TestSettings({takeClaims: true, settleUsingBurn: false});
 
         BalanceDelta balanceDelta = swapRouter.swap(key, SWAP_PARAMS, testSettings, ZERO_BYTES);
+
+        bytes memory data = abi.encodeWithSelector(swapRouter.swap.selector, key, SWAP_PARAMS, testSettings, ZERO_BYTES);
+        emit log_bytes(data);
 
         if (flag.beforeSwap) {
             bytes32 beforeSelector = MockHooks.beforeSwap.selector;
@@ -387,7 +390,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) | 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
@@ -421,7 +424,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) | 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
@@ -448,7 +451,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) | 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
@@ -473,7 +476,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) | 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
@@ -501,7 +504,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             emit log_string("Skip Test");
             return;
         }
-        address payable mockAddr = payable(address(uint160(address(hookAddr)) | 0x10000000));
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
         MockHooks impl = new MockHooks();
         vm.etch(mockAddr, address(impl).code);
         MockHooks mockHooks = MockHooks(mockAddr);
@@ -513,6 +516,121 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
         donateRouter.donate(key, 100, 200, ZERO_BYTES);
     }
+
+    function test_addLiquidity_withNative_gas() public {
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
+        MockHooks impl = new MockHooks();
+        vm.etch(mockAddr, address(impl).code);
+        MockHooks mockHooks = MockHooks(mockAddr);
+
+        (nativeKey,) = initPoolAndAddLiquidityETH(
+            CurrencyLibrary.ADDRESS_ZERO, currency1, mockHooks, 3000, SQRT_PRICE_1_1, ZERO_BYTES, 1 ether
+        );
+        modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(nativeKey, LIQUIDITY_PARAMS, ZERO_BYTES);
+        snapLastCall("addLiquidity with native token");
+    }
+
+    function test_removeLiquidity_withNative_gas() public {
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
+        MockHooks impl = new MockHooks();
+        vm.etch(mockAddr, address(impl).code);
+        MockHooks mockHooks = MockHooks(mockAddr);
+
+        (nativeKey,) = initPoolAndAddLiquidityETH(
+            CurrencyLibrary.ADDRESS_ZERO, currency1, mockHooks, 3000, SQRT_PRICE_1_1, ZERO_BYTES, 1 ether
+        );
+        modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(nativeKey, REMOVE_LIQUIDITY_PARAMS, ZERO_BYTES);
+        snapLastCall("removeLiquidity with native token");
+    }
+
+    function test_swap_succeedsWithNativeTokensIfInitialized() public {
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
+        MockHooks impl = new MockHooks();
+        vm.etch(mockAddr, address(impl).code);
+        MockHooks mockHooks = MockHooks(mockAddr);
+
+        (nativeKey,) = initPoolAndAddLiquidityETH(
+            CurrencyLibrary.ADDRESS_ZERO, currency1, mockHooks, 3000, SQRT_PRICE_1_1, ZERO_BYTES, 1 ether
+        );
+        PoolSwapTest.TestSettings memory testSettings =
+            PoolSwapTest.TestSettings({takeClaims: true, settleUsingBurn: false});
+
+        vm.expectEmit(true, true, true, true);
+        emit Swap(
+            nativeKey.toId(),
+            address(swapRouter),
+            int128(-100),
+            int128(98),
+            79228162514264329749955861424,
+            1e18,
+            -1,
+            3000
+        );
+
+        swapRouter.swap{value: 100}(nativeKey, SWAP_PARAMS, testSettings, ZERO_BYTES);
+    }
+
+    function test_swap_withNative_succeeds() public {
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
+        MockHooks impl = new MockHooks();
+        vm.etch(mockAddr, address(impl).code);
+        MockHooks mockHooks = MockHooks(mockAddr);
+
+        (nativeKey,) = initPoolAndAddLiquidityETH(
+            CurrencyLibrary.ADDRESS_ZERO, currency1, mockHooks, 3000, SQRT_PRICE_1_1, ZERO_BYTES, 1 ether
+        );
+        PoolSwapTest.TestSettings memory testSettings =
+            PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false});
+
+        swapRouter.swap{value: 100}(nativeKey, SWAP_PARAMS, testSettings, ZERO_BYTES);
+    }
+
+    function test_swap_withNative_gas() public {
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
+        MockHooks impl = new MockHooks();
+        vm.etch(mockAddr, address(impl).code);
+        MockHooks mockHooks = MockHooks(mockAddr);
+
+        (nativeKey,) = initPoolAndAddLiquidityETH(
+            CurrencyLibrary.ADDRESS_ZERO, currency1, mockHooks, 3000, SQRT_PRICE_1_1, ZERO_BYTES, 1 ether
+        );
+        swapRouterNoChecks.swap{value: 100}(nativeKey, SWAP_PARAMS);
+        snapLastCall("simple swap with native");
+    }
+
+    function test_swap_againstLiqWithNative_gas() public {
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
+        MockHooks impl = new MockHooks();
+        vm.etch(mockAddr, address(impl).code);
+        MockHooks mockHooks = MockHooks(mockAddr);
+
+        (nativeKey,) = initPoolAndAddLiquidityETH(
+            CurrencyLibrary.ADDRESS_ZERO, currency1, mockHooks, 3000, SQRT_PRICE_1_1, ZERO_BYTES, 1 ether
+        );
+        PoolSwapTest.TestSettings memory testSettings =
+            PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false});
+
+        swapRouter.swap{value: 1 ether}(nativeKey, SWAP_PARAMS, testSettings, ZERO_BYTES);
+
+        IPoolManager.SwapParams memory params =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: -100, sqrtPriceLimitX96: SQRT_PRICE_1_4});
+
+        swapRouter.swap{value: 1 ether}(nativeKey, params, testSettings, ZERO_BYTES);
+        snapLastCall("swap against liquidity with native token");
+    }
+
+    function test_take_succeedsWithPoolWithLiquidityWithNativeToken() public {
+        address payable mockAddr = payable(address(uint160(address(hookAddr)) ^ (0xffffffff << 128)));
+        MockHooks impl = new MockHooks();
+        vm.etch(mockAddr, address(impl).code);
+        MockHooks mockHooks = MockHooks(mockAddr);
+        
+        (nativeKey,) = initPoolAndAddLiquidityETH(
+            CurrencyLibrary.ADDRESS_ZERO, currency1, mockHooks, 3000, SQRT_PRICE_1_1, ZERO_BYTES, 1 ether
+        );
+        takeRouter.take{value: 1}(nativeKey, 1, 1); // assertions inside takeRouter because it takes then settles
+    }
+
 
     function generateHookAddress() public view returns (address) {
         uint160 hookFlags = 0;
