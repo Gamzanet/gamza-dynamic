@@ -76,10 +76,9 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     function setUp() public {
         address forFlag = address(uint160(Hooks.ALL_HOOK_MASK));
 
-        // string memory code_json = vm.readFile("test/_inputBytecode/_kenny_ArrakisHookV1.json");
-        // string memory code_json = vm.readFile("test/_inputBytecode/_kenny_GasPriceFeesHook.json");
-        string memory code_json = vm.readFile("test/_inputBytecode/_kenny_PointsHook.json");
-        // string memory code_json = vm.readFile("test/_inputBytecode/_kenny_TakeProfitsHook.json");
+        // string memory code_json = vm.readFile("test/_inputBytecode/_kenny_GasPriceFeesHook.json"); // 미완
+        // string memory code_json = vm.readFile("test/_inputBytecode/_kenny_PointsHook.json");
+        string memory code_json = vm.readFile("test/_inputBytecode/_kenny_TakeProfitsHook.json");
         // string memory code_json = vm.readFile("test/_inputBytecode/_sori_backdoor.json");
         // string memory code_json = vm.readFile("test/_inputBytecode/_sori_slot0-oracle.json");
         // string memory code_json = vm.readFile("test/_inputBytecode/_sori_time.json");
@@ -367,9 +366,6 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
             PoolSwapTest.TestSettings({takeClaims: true, settleUsingBurn: false});
 
         BalanceDelta balanceDelta = swapRouter.swap(key, SWAP_PARAMS, testSettings, ZERO_BYTES);
-
-        bytes memory data = abi.encodeWithSelector(swapRouter.swap.selector, key, SWAP_PARAMS, testSettings, ZERO_BYTES);
-        emit log_bytes(data);
 
         if (flag.beforeSwap) {
             bytes32 beforeSelector = MockHooks.beforeSwap.selector;

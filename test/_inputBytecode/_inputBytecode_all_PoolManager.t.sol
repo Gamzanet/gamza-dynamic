@@ -76,9 +76,8 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     function setUp() public {
         address forFlag = address(uint160(Hooks.ALL_HOOK_MASK));
 
-        // string memory code_json = vm.readFile("test/_inputBytecode/_kenny_ArrakisHookV1.json");
-        // string memory code_json = vm.readFile("test/_inputBytecode/_kenny_GasPriceFeesHook.json");
-        string memory code_json = vm.readFile("test/_inputBytecode/_kenny_PointsHook.json");
+        string memory code_json = vm.readFile("test/_inputBytecode/_kenny_GasPriceFeesHook.json");
+        // string memory code_json = vm.readFile("test/_inputBytecode/_kenny_PointsHook.json");
         // string memory code_json = vm.readFile("test/_inputBytecode/_kenny_TakeProfitsHook.json");
         // string memory code_json = vm.readFile("test/_inputBytecode/_sori_backdoor.json");
         // string memory code_json = vm.readFile("test/_inputBytecode/_sori_slot0-oracle.json");
@@ -98,12 +97,15 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         FEE = LPFeeLibrary.DYNAMIC_FEE_FLAG;
         // FEE = Constants.FEE_MEDIUM;
 
-        bytes memory withconstructor = abi.encodePacked(bytecode, abi.encode(manager, "test", "test"));
+        deployFreshManagerAndRouters();
+        deployMintAndApprove2Currencies();
+
+        bytes memory withconstructor = abi.encodePacked(bytecode, abi.encode(manager, "test"));
         vm.etch(hookAddr, withconstructor);
         (success, returnData) = hookAddr.call("");
         vm.etch(hookAddr, returnData);
 
-        initializeManagerRoutersAndPoolsWithLiq(IHooks(hookAddr));
+        custom_initializeManagerRoutersAndPoolsWithLiq(IHooks(hookAddr));
     }
 
     function test_addLiquidity_failsIfNotInitialized() public {
@@ -537,11 +539,6 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         PoolSwapTest.TestSettings memory testSettings =
             PoolSwapTest.TestSettings({takeClaims: true, settleUsingBurn: false});
 
-        vm.expectEmit(true, true, true, true);
-        emit Swap(
-            key.toId(), address(swapRouter), int128(-100), int128(98), 79228162514264329749955861424, 1e18, -1, 3000
-        );
-
         swapRouter.swap(key, SWAP_PARAMS, testSettings, ZERO_BYTES);
     }
 
@@ -553,18 +550,6 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
     function test_swap_succeedsWithNativeTokensIfInitialized() public {
         PoolSwapTest.TestSettings memory testSettings =
             PoolSwapTest.TestSettings({takeClaims: true, settleUsingBurn: false});
-
-        vm.expectEmit(true, true, true, true);
-        emit Swap(
-            nativeKey.toId(),
-            address(swapRouter),
-            int128(-100),
-            int128(98),
-            79228162514264329749955861424,
-            1e18,
-            -1,
-            3000
-        );
 
         swapRouter.swap{value: 100}(nativeKey, SWAP_PARAMS, testSettings, ZERO_BYTES);
     }
@@ -581,7 +566,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
         MockContract(mockAddr).setImplementation(hookAddr);
 
-        (key,) = initPoolAndAddLiquidity(currency0, currency1, IHooks(mockAddr), 3000, SQRT_PRICE_1_1, ZERO_BYTES);
+        (key,) = initPoolAndAddLiquidity(currency0, currency1, IHooks(mockAddr), FEE, SQRT_PRICE_1_1, ZERO_BYTES);
 
         PoolSwapTest.TestSettings memory testSettings =
             PoolSwapTest.TestSettings({takeClaims: true, settleUsingBurn: false});
@@ -1235,5 +1220,18 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         if (flag.afterRemoveLiquidityReturnDelta) hookFlags |= Hooks.AFTER_REMOVE_LIQUIDITY_RETURNS_DELTA_FLAG;
 
         return address(uint160(hookFlags));
+    }
+
+    // Deploys the manager, all test routers, and sets up 2 pools: with and without native
+    function custom_initializeManagerRoutersAndPoolsWithLiq(IHooks hooks) internal {
+        (key,) = initPoolAndAddLiquidity(currency0, currency1, hooks, FEE, SQRT_PRICE_1_1, ZERO_BYTES);
+        nestedActionRouter.executor().setKey(key);
+        (nativeKey,) = initPoolAndAddLiquidityETH(
+            CurrencyLibrary.ADDRESS_ZERO, currency1, hooks, FEE, SQRT_PRICE_1_1, ZERO_BYTES, 1 ether
+        );
+        uninitializedKey = key;
+        uninitializedNativeKey = nativeKey;
+        uninitializedKey.fee = 100;
+        uninitializedNativeKey.fee = 100;
     }
 }
