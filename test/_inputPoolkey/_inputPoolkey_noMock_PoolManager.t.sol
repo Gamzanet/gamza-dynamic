@@ -100,8 +100,6 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
 
         hookAddr = address(inputkey.hooks);
 
-        deployFreshManagerAndRouters();
-
         // eth-sepolia
         // manager = IPoolManager(0xE8E23e97Fa135823143d6b9Cba9c699040D51F70);
         // swapRouter = PoolSwapTest(0x0937C4D65d7CddbF02E75B88Dd33f536b201c2a6);
@@ -111,6 +109,7 @@ contract PoolManagerTest is Test, Deployers, GasSnapshot {
         manager = IPoolManager(0x39BF2eFF94201cfAA471932655404F63315147a4);
         swapRouter = PoolSwapTest(0xFf34e285F8ED393E366046153e3C16484A4dD674);
         modifyLiquidityRouter = PoolModifyLiquidityTest(0x841B5A0b3DBc473c8A057E2391014aa4C4751351);
+        donateRouter = new PoolDonateTest(manager);
 
         if (!inputkey.currency0.isAddressZero()) {
             deal(address(Currency.unwrap(inputkey.currency0)), address(this), type(uint256).max);
